@@ -1,0 +1,16 @@
+{
+    "name": "glitter-bridge-sdk-examples",
+    "description": "Glitter Finance Bridge SDK Examples",
+    "scripts": {},
+    "dependencies": {
+        "glitter-bridge-sdk-dev": "*",
+        "glitter-bridge-algorand-dev": "*",
+        "glitter-bridge-solana-dev": "*",
+        "glitter-bridge-common-dev": "*"
+    },
+    "devDependencies": {
+        "@babel/core": "latest",
+        "@types/node": "latest"
+    },
+    "version": "0.1.0"
+}
