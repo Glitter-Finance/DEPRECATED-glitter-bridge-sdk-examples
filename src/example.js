@@ -2,6 +2,8 @@
 const { GlitterBridgeSDK, BridgeNetworks, GlitterNetworks } = require('glitter-bridge-sdk-dev');
 const path = require('path');
 const util = require('util');
+const fs = require('fs');
+const { Sleep } = require('glitter-bridge-common-dev/dist');
 
 run()
 
@@ -32,137 +34,208 @@ async function runMain() {
             if (!algorand) throw new Error("Algorand not loaded");
             if (!solana) throw new Error("Solana not loaded");
 
-            //Create new algorand account
+            //load/create new algorand account
             console.log();
-            console.log("============================ Creating New Algorand Account ============================");
+            console.log("==== Loading/Creating New Algorand Account ============");
+            const algorandAccount = await getAlgorandAccount(algorandAccounts);
+            console.log(`Algorand Account: ${algorandAccount.addr}`);
+
+            //load Create new solana account
+            console.log();
+            console.log("==== Creating New Solana Account ============");
+            const solanaAccount = await getSolanaAccount(solanaAccounts);
+            console.log(`Solana Account: ${solanaAccount.addr}`);
+
+            //fund Algorand account
+            console.log();
+            console.log("==== Funding Algorand Account  ============");
+            console.log("Here is the address of your account.  Click on the link to fund it with **6** or more testnet tokens.");
+            console.log(`https://testnet.algoexplorer.io/address/${algorandAccount.addr}`);
+            console.log();
+            console.log("Dispenser");
+            console.log(`https://testnet.algoexplorer.io/dispenser}`);
+            console.log();
+            console.log(`Address: ${algorandAccount.addr}`);
+            await algorand.waitForMinBalance(algorandAccount.addr, 6, 5 * 60); //You need to send 6 or more testnet algos to the account 
+            console.log();
+            const algorandBalance = await algorand.getBalance(algorandAccount.addr);
+            console.log(`Algorand Balance: ${algorandBalance}`);
+
+            //fund Solana account
+            console.log();
+            console.log("==== Funding Solana Account  ============");
+            console.log("Here is the address of your account.  Click on the link to fund it with **10** testnet tokens.");
+            console.log(`https://explorer.solana.com/address/${solanaAccount.addr}?cluster=testnet`);
+            console.log();
+            console.log("Dispenser");
+            console.log(`https://solfaucet.com/}`);
+            console.log(`Address: ${solanaAccount.addr}`);
+            await solana.waitForMinBalance(solanaAccount.addr, 1, 5 * 60); //You need to send 1 or more testnet sol to the account 
+            console.log();
+            const solanaBalance = await solana.getBalance(solanaAccount.addr);
+            console.log(`Solana Balance: ${solanaBalance}`);
+
+            //Opt in to xSOL
+            console.log();
+            console.log("==== Opting Algorand Account In to xSOL  ============");
+            let startingBalance = await algorand.getBalance(algorandAccount.addr);
+            await algorand.optinToken(algorandAccount, "xSOL");
+            await algorand.waitForBalanceChange(algorandAccount.addr, startingBalance); //Wait for balance to change
+            console.log("Opted in to xSOL");
+
+            //Opt in to xALGO
+            console.log();
+            console.log("==== Opting Solana Account In to xALGO  ============");
+            startingBalance = await solana.getBalance(solanaAccount.addr);
+            await solana.optinToken(solanaAccount, "xALGO");
+
+            //Check if the account exists - if not, wait for the RPC to confirm txn
+            if (!(await solana.optinAccountExists(solanaAccount, "xALGO"))) {
+                await solana.waitForBalanceChange(solanaAccount.addr, startingBalance); //Wait for balance to change
+            }
+            console.log("Opted in to xALGO");
+
+            //Bridge Algo to xALGO
+            console.log();
+            console.log("==== Bridging ALGO to xALGO  ============");
+            startingBalance = await solana.getTokenBalance(solanaAccount.addr, "xALGO");
+            await algorand.bridge(algorandAccount, "algo", "solana", solanaAccount.addr, "xalgo", 5.5);
+            await solana.waitForTokenBalanceChange(solanaAccount.addr, "xAlgo", startingBalance,90);
+            console.log("Bridged ALGO to xALGO");
+
+            //Bridge xALGO to Algo
+            console.log();
+            console.log("==== Bridging xALGO to ALGO  ============");
+            startingBalance = await algorand.getBalance(algorandAccount.addr);
+            await solana.bridge(solanaAccount, "xalgo", "algorand", algorandAccount.addr, "algo", 5);
+            await algorand.waitForBalanceChange(algorandAccount.addr, startingBalance,90);
+            console.log("Bridged xALGO to ALGO");
+
+            //sleeping for 40 seconds to allow for the token accounts to register
+            //weird issue where solana account can't bridge multiple times within a minute
+            //Will be fixed in future release
+            await Sleep(40000)
+
+            //Bridge SOL to xSOL
+            console.log();
+            console.log("==== Bridging SOL to xSOL  ============");
+            startingBalance = await algorand.getTokenBalance(algorandAccount.addr, "xSOL");
+            console.log("Starting Balance: ", startingBalance);
+            await solana.bridge(solanaAccount, "sol", "algorand", algorandAccount.addr, "xsol", 0.1);
+            await algorand.waitForTokenBalanceChange(algorandAccount.addr, "xSOL", startingBalance,90);
+            console.log("Bridged SOL to xSOL");
+
+            //Bridge xSOL to SOL
+            console.log();
+            console.log("==== Bridging xSOL to SOL  ============");
+            startingBalance = await solana.getBalance(solanaAccount.addr);
+            await algorand.bridge(algorandAccount, "xsol", "solana", solanaAccount.addr, "sol", 0.09);
+            await solana.waitForBalanceChange(solanaAccount.addr, startingBalance,90);
+            console.log("Bridged xSOL to SOL");
+          
+            resolve(true);
+
+        } catch (error) {
+            reject(error);
+        }
+    });
+
+}
+
+async function getAlgorandAccount(algorandAccounts) {
+    // eslint-disable-next-line no-async-promise-executor
+    return new Promise(async (resolve, reject) => {
+        try {
+
+            //Check file path for saved config:
+            const algoAccountFile = path.join(__dirname, 'local/algoAccount.txt');
+
+            //Load account if exists in file
+            if (fs.existsSync(algoAccountFile)) {
+                //file exists
+                const mnemonic = fs.readFileSync(algoAccountFile, 'utf8');
+
+                if (mnemonic) {
+                    //Add to loaded accounts
+                    let algoAccount = await algorandAccounts.add(mnemonic);
+                    resolve(algoAccount);
+                    return;
+                }
+            }
+
+            //Create new algorand account
+            console.log("Creating new Algorand Account");
             const newAlgoAccount = await algorandAccounts.createNew();
             console.log(util.inspect(newAlgoAccount, false, 5, true /* enable colors */));
 
+            //Get mnemonic
+            const mnemonic = algorandAccounts.getMnemonic(newAlgoAccount);
+            console.log("Algorand Mnemonic: " + mnemonic);
+
+            //Save algorand account to file
+            console.log("Saving Algorand Account to file " + algoAccountFile);
+
+            //Write account to file
+            fs.writeFile(algoAccountFile, mnemonic, 'utf8', function (err) {
+                if (err) {
+                    console.log("An error occured while writing algorand Object to File.");
+                    return console.log(err);
+                }
+
+                console.log("algorand file has been saved.");
+            });
+
+            resolve(newAlgoAccount);
+
+        } catch (error) {
+            reject(error);
+        }
+    });
+
+}
+async function getSolanaAccount(solanaAccounts) {
+    // eslint-disable-next-line no-async-promise-executor
+    return new Promise(async (resolve, reject) => {
+        try {
+
+            //Check file path for saved config:
+            const solanaAccountFile = path.join(__dirname, 'local/solanaAccount.txt');
+
+            //Load account if exists in file
+            if (fs.existsSync(solanaAccountFile)) {
+                //file exists
+                const mnemonic = fs.readFileSync(solanaAccountFile, 'utf8');
+
+                if (mnemonic) {
+                    //Add to loaded accounts
+                    let solanaAccount = await solanaAccounts.add(mnemonic);
+                    resolve(solanaAccount);
+                    return;
+                }
+            }
+
             //Create new solana account
-            console.log();
-            console.log("============================ Creating New Solana Account ============================");
+            console.log("Creating new Solana Account");
             const newSolanaAccount = await solanaAccounts.createNew();
             console.log(util.inspect(newSolanaAccount, false, 5, true /* enable colors */));
 
-            //Get Algorand account balance
-            // console.log("============================ Funding Algorand Account  ============================");
-            // console.log("Here is the address of your account.  Click on the link to fund it with **10** testnet tokens.");
-            // console.log(`https://testnet.algoexplorer.io/address/${newAlgoAccount.addr}`);
-            // await algorand.waitForBalance(newAlgoAccount.addr, 6, 5 * 60, 0.001, true); //You need to send 6 or more testnet algos to the account 
+            let mnemonic = newSolanaAccount.mnemonic;
+            console.log("Solana Mnemonic: " + mnemonic);
 
-            //Get Solana account balance
-            console.log("============================ Funding Solana Account  ============================");
-            console.log("Here is the address of your account.  Click on the link to fund it with **10** testnet tokens.");
-            console.log(`https://solscan.io/account/${newSolanaAccount.addr}?cluster=testnet`);
-            await solana.waitForBalance(newSolanaAccount.addr, 1, 5 * 60, 0.001, true); //You need to send 1 or more testnet sol to the account 
+            //Save solana account to file
+            console.log("Saving Solana Account to file " + solanaAccountFile);
 
+            //Write account to file
+            fs.writeFile(solanaAccountFile, mnemonic, 'utf8', function (err) {
+                if (err) {
+                    console.log("An error occured while writing solana Object to File.");
+                    return console.log(err);
+                }
 
-            // //Load Local Algorand Accounts    
-            // let algoAccount = await algorandAccounts.add(process.env.DEV_ALGORAND_ACCOUNT_TEST);
-            // algoAccount = await algorandAccounts.updateAccountDetails(algoAccount, true);
-            // let solAccount = await solanaAccounts.add(process.env.DEV_SOLANA_ACCOUNT_TEST);
-            // solAccount = await solanaAccounts.updateAccountDetails(solAccount, true);
-            // if (!algoAccount || !solAccount) throw console.error("Failed to load accounts");
+                console.log("Solana file has been saved.");
+            });
 
-            // console.log(`============ Setup Algorand Wallet:  ${algoAccount?.addr} =================`)
-            // console.log(`============ Setup Solana Wallet:  ${solAccount?.addr} =================`)
-
-            // const algoBalance = await algorand.getBalance(algoAccount.addr);
-            // const solBalance = await solana.getBalance(solAccount.addr);
-            // console.log(`Algorand Balance: ${algoBalance}`);
-            // console.log(`Solana Balance: ${solBalance}`);
-
-            // const xSolBalance = await algorand.getTokenBalance(algoAccount.addr, "xSol");
-            // const xAlgoBalance = await solana.getTokenBalance(solAccount.addr, "xAlgo");
-            // console.log(`xSol Balance: ${xSolBalance}`);
-            // console.log(`xAlgo Balance: ${xAlgoBalance}`);
-
-            //const solBridge = sdk.solana.bridge(solAccount, "sol", "algorand", algoAccount.addr, "xSOL", 0.05);
-            //const algoBridge = 
-
-
-
-            //let x = await sdk.solana.bridge(solAccount, "xAlgo", "algorand", algoAccount.addr, "algo", 0.05);
-
-
-            // //Check network health
-            // const health = await sdk.algorand?.checkHealth();
-            // console.log(`Algorand Health: ${util.inspect(health, false, 5, true /* enable colors */)}`);
-            // const version = await sdk.algorand?.checkVersion();
-            // console.log(`Algorand Version: ${util.inspect(version, false, 5, true /* enable colors */)}`);
-
-
-
-
-
-            // //Fund Account
-            // const fundResult = await sdk.solana?.fundAccount(solAccount, newSolAccount, 0.1);   
-            // let balance = await sdk.solana?.waitForBalance(newSolAccount.addr, 0.1,60);
-            // console.log(`Balance: ${balance}`);   
-
-            // //Optin to xALGO
-            // const optinResult = await sdk.solana?.optinToken(newSolAccount, "xALGO");           
-            // balance = await sdk.solana?.waitForBalance(newSolAccount.addr, 0.09795572,60);
-            // console.log(`Balance: ${balance}`);   
-
-            // //Fund xALGO
-            // const sendToken = await sdk.solana?.fundAccountTokens(solAccount, newSolAccount, 0.05, "xALGO");   
-            // const tokenBalance = await sdk.solana?.waitForTokenBalance(newSolAccount.addr, "xALGO",0.05);
-            // console.log(`Token Balance: ${tokenBalance}`);             
-
-            // //Close Token Account
-            // const closeTokenAccount = await sdk.solana?.closeOutTokenAccount( newSolAccount,solAccount, "xALGO");  
-
-            // balance = await sdk.solana?.waitForBalance(newSolAccount.addr, 0.09794072,60);
-            // console.log(`Balance: ${balance}`);   
-            // const closeAccount = await sdk.solana?.closeOutAccount( newSolAccount, solAccount);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            //const optin = await sdk.solana?.optinAsset(newSolAccount, "xALGO");
-
-            //Close Accounts
-            //const closeTokenAccount = await SolanaAccounts.closeOutAsset(newSolAccount, "xALGO", solAccount.addr);
-            //const closeAccount = await SolanaAccounts.closeAccount(newSolAccount, solAccount.addr);
-
-            // //Create new algorand account
-            // const newAlgoAccount = await AlgorandAccounts.createNew();
-            // console.log(util.inspect(newAlgoAccount, false, 5, true /* enable colors */));
-
-            // //Fund Account
-            // const fundResult = await AlgorandAccounts.fundAccount(algoAccount, newAlgoAccount, 6);
-            // const optin = await AlgorandAccounts.optinAsset(newAlgoAccount, "xSOL");
-            // const sendToken = await AlgorandAccounts.fundAccountToken(algoAccount, newAlgoAccount, 1, "xSOL");
-
-            // try {
-            //     //Bridge Algo
-            //     const bridgeAlgo = await AlgorandAccounts.bridge(newAlgoAccount, "Algo", "Solana", solAccount.addr, "xAlgo", 5);
-            //     const bridgexSOL = await AlgorandAccounts.bridge(newAlgoAccount, "xSOL", "Solana", solAccount.addr, "Sol", 0.05);
-
-            // } catch (e) {
-            //     console.log(e);
-            // }
-
-            // //Close New Account
-            // const closeTokenAccount = await AlgorandAccounts.closeOutAsset(newAlgoAccount, "xSOL", algoAccount.addr);
-            // const closeAccount = await AlgorandAccounts.closeAccount(newAlgoAccount, algoAccount.addr);
-
-            resolve(true);
+            resolve(newSolanaAccount);
 
         } catch (error) {
             reject(error);
