@@ -1,9 +1,8 @@
-
-const { GlitterBridgeSDK, BridgeNetworks, GlitterNetworks } = require('glitter-bridge-sdk-dev');
+const { GlitterBridgeSDK, BridgeNetworks, GlitterNetworks } = require('glitter-bridge-sdk');
 const path = require('path');
 const util = require('util');
 const fs = require('fs');
-const { Sleep } = require('glitter-bridge-common-dev/dist');
+const { Sleep } = require('glitter-bridge-common');
 
 run()
 
@@ -81,6 +80,7 @@ async function runMain() {
             let startingBalance = await algorand.getBalance(algorandAccount.addr);
             await algorand.optinToken(algorandAccount, "xSOL");
             await algorand.waitForBalanceChange(algorandAccount.addr, startingBalance); //Wait for balance to change
+            console.log();
             console.log("Opted in to xSOL");
 
             //Opt in to xALGO
@@ -101,6 +101,7 @@ async function runMain() {
             startingBalance = await solana.getTokenBalance(solanaAccount.addr, "xALGO");
             await algorand.bridge(algorandAccount, "algo", "solana", solanaAccount.addr, "xalgo", 5.5);
             await solana.waitForTokenBalanceChange(solanaAccount.addr, "xAlgo", startingBalance,90);
+            console.log();
             console.log("Bridged ALGO to xALGO");
 
             //Bridge xALGO to Algo
@@ -109,6 +110,7 @@ async function runMain() {
             startingBalance = await algorand.getBalance(algorandAccount.addr);
             await solana.bridge(solanaAccount, "xalgo", "algorand", algorandAccount.addr, "algo", 5);
             await algorand.waitForBalanceChange(algorandAccount.addr, startingBalance,90);
+            console.log();
             console.log("Bridged xALGO to ALGO");
 
             //sleeping for 40 seconds to allow for the token accounts to register
@@ -123,6 +125,7 @@ async function runMain() {
             console.log("Starting Balance: ", startingBalance);
             await solana.bridge(solanaAccount, "sol", "algorand", algorandAccount.addr, "xsol", 0.1);
             await algorand.waitForTokenBalanceChange(algorandAccount.addr, "xSOL", startingBalance,90);
+            console.log();
             console.log("Bridged SOL to xSOL");
 
             //Bridge xSOL to SOL
@@ -131,6 +134,7 @@ async function runMain() {
             startingBalance = await solana.getBalance(solanaAccount.addr);
             await algorand.bridge(algorandAccount, "xsol", "solana", solanaAccount.addr, "sol", 0.09);
             await solana.waitForBalanceChange(solanaAccount.addr, startingBalance,90);
+            console.log();
             console.log("Bridged xSOL to SOL");
           
             resolve(true);
