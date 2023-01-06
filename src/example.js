@@ -1,8 +1,7 @@
-const { GlitterBridgeSDK, BridgeNetworks, GlitterNetworks } = require('glitter-bridge-sdk');
+const { GlitterBridgeSDK, BridgeNetworks,GlitterEnvironment } = require('glitter-bridge-sdk-dev');
 const path = require('path');
 const util = require('util');
 const fs = require('fs');
-const { Sleep } = require('glitter-bridge-common');
 
 run()
 
@@ -18,7 +17,7 @@ async function runMain() {
 
             //Load SDK
             const sdk = new GlitterBridgeSDK()
-                .setEnvironment(GlitterNetworks.testnet)
+                .setEnvironment(GlitterEnvironment.testnet)
                 .connect([BridgeNetworks.algorand, BridgeNetworks.solana]);
 
             //Reference variables locally for ease of use

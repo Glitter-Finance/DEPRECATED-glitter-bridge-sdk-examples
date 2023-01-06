@@ -3,10 +3,7 @@
     "description": "Glitter Finance Bridge SDK Examples",
     "scripts": {},
     "dependencies": {
-        "glitter-bridge-sdk": "^1.0.0",
-        "glitter-bridge-algorand": "^1.0.0",
-        "glitter-bridge-solana": "^1.0.0",
-        "glitter-bridge-common": "^1.0.0"
+        "glitter-bridge-sdk-dev": "^1.1.2"
     },
     "devDependencies": {
         "@babel/core": "latest",
