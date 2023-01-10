@@ -1,0 +1,21 @@
+.Solana {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.SolanaTitle {
+  color: #fff;
+  font-size: 35px;
+  margin-top: 24px;
+}
+
+.SolanaButtonContainer {
+  display: flex;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.SolanaButton {
+  margin-right: 16px;
+}

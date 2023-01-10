@@ -1,0 +1,21 @@
+.Algorand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.AlgorandTitle {
+  color: #fff;
+  font-size: 35px;
+  margin-top: 24px;
+}
+
+.AlgorandButtonContainer {
+  display: flex;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.AlgorandButton {
+  margin-right: 16px;
+}
