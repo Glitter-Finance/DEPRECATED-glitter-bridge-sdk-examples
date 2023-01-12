@@ -19,3 +19,28 @@
 .SolanaButton {
   margin-right: 16px;
 }
+
+.SolanaConnectedContainer {
+  display: flex;
+  flex-direction: column;
+}
+
+.SolanaAddress {
+  color: #fff;
+  font-size: 17px;
+  padding: 10px 0;
+}
+
+.SolanaAddressHeader {
+  color: #fff;
+  font-size: 17px;
+  margin-top: 14px;
+}
+
+.SolanaDisconnect {
+  margin-bottom: 18px;
+}
+
+.SolanaSignButton {
+  margin-top: 18px;
+}

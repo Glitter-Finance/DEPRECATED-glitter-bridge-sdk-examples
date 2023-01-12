@@ -19,3 +19,29 @@
 .AlgorandButton {
   margin-right: 16px;
 }
+
+.AlgorandContainer,
+.AlgorandConnectedContainer {
+  display: flex;
+  flex-direction: column;
+}
+
+.AlgorandAddressHeader {
+  color: #fff;
+  font-size: 17px;
+  margin-top: 14px;
+}
+
+.AlgorandDisconnect {
+  margin-bottom: 18px;
+}
+
+.AlgorandSignButton {
+  margin-top: 18px;
+}
+
+.AlgorandAddress {
+  color: #fff;
+  font-size: 17px;
+  padding: 10px 0;
+}
