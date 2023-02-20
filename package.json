@@ -3,6 +3,8 @@
     "description": "Glitter Finance Bridge SDK Examples",
     "scripts": {},
     "dependencies": {
+        "ethereumjs-wallet": "^1.0.2",
+        "ethers": "^6.0.5",
         "glitter-bridge-sdk-dev": "^1.1.49"
     },
     "devDependencies": {
